@@ -1,5 +1,6 @@
 #include "HYPRE_struct_ls.h"
 #include "mpi.h"
+#include <cuda_runtime.h>
 
 int main(int argc, char *argv[])
 {
@@ -75,7 +76,9 @@ int main(int argc, char *argv[])
 
     HYPRE_StructMatrix A;
     // double values[36];
-    double *values = (double *)calloc(36, sizeof(double));
+    // double *values = (double *)calloc(36, sizeof(double));
+    double *values;
+    cudaMallocManaged(&values, 36 * sizeof(double));
     // int stencil_indices[2] = {0, 3};
     int *stencil_indices = (int *)calloc(2, sizeof(int));
     stencil_indices[0] = 0;
@@ -125,7 +128,8 @@ int main(int argc, char *argv[])
     HYPRE_StructMatrixDestroy(A);
     // HYPRE_StructVectorDestroy(b);
 
-    free(values);
+    // free(values);
+    cudaFree(values);
     free(stencil_indices);
     free(ilower[0]);
     free(ilower[1]);
