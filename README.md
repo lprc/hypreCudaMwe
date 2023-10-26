@@ -10,7 +10,10 @@ Also, if your default C++ compiler works, setting CMAKE_CXX_COMPILER might not b
 ```
 mkdir build
 cd build
-cmake -DHYPRE_DIR=/home/simon/hypreWithoutUnifiedMem/lib/cmake/HYPRE -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=/usr/bin/clang++
+cmake -DHYPRE_DIR=/home/simon/hypreWithoutUnifiedMem/lib/cmake/HYPRE \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+  ..
 cd ..
 cmake --build build
 ```
