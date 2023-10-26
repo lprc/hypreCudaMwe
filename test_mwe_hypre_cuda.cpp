@@ -1,6 +1,7 @@
 #include "HYPRE_struct_ls.h"
 #include "mpi.h"
 #include <cuda_runtime.h>
+#include <iostream>
 
 int main(int argc, char *argv[])
 {
@@ -148,6 +149,8 @@ int main(int argc, char *argv[])
 
     /* Finalize MPI */
     MPI_Finalize();
+
+    std::cout << "Finished without errors." << std::endl;
 
     return 0;
 }
