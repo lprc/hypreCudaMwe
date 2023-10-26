@@ -1,0 +1,57 @@
+FROM nvidia/cuda:12.2.2-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN set -ex; \
+    apt-get update; \
+    apt-get install -y clang wget openmpi-bin libopenmpi-dev git build-essential
+
+RUN wget -q "https://github.com/Kitware/CMake/releases/download/v3.28.0-rc2/cmake-3.28.0-rc2-linux-x86_64.tar.gz"; \
+    tar -xzf cmake-3.28.0-rc2-linux-x86_64.tar.gz && \
+    rm cmake-3.28.0-rc2-linux-x86_64.tar.gz && \
+    mv cmake-3.28.0-rc2-linux-x86_64 /opt/cmake
+ENV PATH="/opt/cmake/bin:${PATH}"
+
+# clone hypre
+WORKDIR "/hypreCudaMwe"
+RUN git clone https://github.com/hypre-space/hypre.git
+
+# make architecture settable from outside, i.e. docker build --build-arg SM=75 ...
+ARG SM=75
+
+# install hypre
+WORKDIR "/hypreCudaMwe/hypre/src/cmbuild"
+RUN cmake -DHYPRE_WITH_CUDA=ON \
+    -DHYPRE_ENABLE_UNIFIED_MEMORY=ON \
+    -DHYPRE_BUILD_EXAMPLES=ON \
+    -DHYPRE_INSTALL_PREFIX=/hypreUnifiedMem \
+    -DHYPRE_CUDA_SM=$SM \
+    /hypreCudaMwe/hypre/src
+WORKDIR "/hypreCudaMwe/hypre/src"
+RUN cmake --build "/hypreCudaMwe/hypre/src/cmbuild" --target install
+# RUN ls /hypreUnifiedMem/
+
+# Also build hypre using autoconf (examples don't work with CMake build) and build examples ex1 and ex2
+ENV CUDA_HOME=/usr/local/cuda
+WORKDIR "/hypreCudaMwe/hypre/src"
+RUN ./configure --with-cuda --enable-unified-memory --enable-debug --with-gpu-arch=$SM
+RUN make use_cuda=1 -j8
+WORKDIR "/hypreCudaMwe/hypre/src/examples"
+RUN sed -i 's/-libmc++//g' Makefile; \
+    make use_cuda=1 ex1 ex2
+
+WORKDIR "/hypreCudaMwe"
+COPY CMakeLists.txt test_mwe_hypre_cuda.cpp ./
+
+RUN set -ex; \
+    mkdir build; \
+    cd build; \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+    -DHYPRE_DIR=/hypreUnifiedMem/lib/cmake/HYPRE \
+    /hypreCudaMwe; \
+    cd "/hypreCudaMwe"; \
+    cmake --build build
+
+# set env variables to allow mpi to run as root
+ENV OMPI_ALLOW_RUN_AS_ROOT=1
+ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
